@@ -1,0 +1,49 @@
+{
+  "name": "opsbridge-mcp",
+  "version": "1.0.0",
+  "description": "Unified remote MCP server for GoHighLevel, Brevo, and Stripe business operations",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@getbrevo/brevo": "^6.0.3",
+    "@gohighlevel/api-client": "^3.1.0",
+    "@modelcontextprotocol/express": "^2.0.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "dotenv": "^17.0.0",
+    "express": "^5.2.0",
+    "pino": "^10.3.1",
+    "pino-pretty": "^13.0.0",
+    "stripe": "^22.6.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^10.11.0",
+    "msw": "^2.15.0",
+    "prettier": "^3.9.8",
+    "supertest": "^7.2.2",
+    "tsx": "^4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^5.0.1"
+  }
+}
