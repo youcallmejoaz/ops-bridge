@@ -204,6 +204,14 @@ Clients authenticate with a static bearer token (`MCP_AUTH_SECRET`) verified aga
 set (`MCP_AUTH_SCOPES`); tools declare and enforce the scopes they need
 (`READ_CUSTOMERS` / `WRITE_CUSTOMERS` / `WRITE_MARKETING` / `WRITE_CRM`) before running.
 
+A failed check answers a plain `401` with **no `WWW-Authenticate: Bearer` challenge header**
+(`src/app.ts`, `staticBearerAuth`) — deliberately not the MCP SDK's `requireBearerAuth` helper, which
+adds that header because it's built for a real OAuth resource server. This server has no
+authorization server, token endpoint, or `/.well-known/oauth-*` metadata behind it, and some MCP
+clients treat that header as "this server speaks OAuth" and attempt discovery/Dynamic Client
+Registration instead of using a configured static header — which fails here since there's nothing
+to discover. Omitting the header avoids that path entirely.
+
 ## Security considerations
 
 - **No secrets in code or logs.** API keys are read from environment variables only; structured
