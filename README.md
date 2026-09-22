@@ -204,6 +204,14 @@ Clients authenticate with a static bearer token (`MCP_AUTH_SECRET`) verified aga
 set (`MCP_AUTH_SCOPES`); tools declare and enforce the scopes they need
 (`READ_CUSTOMERS` / `WRITE_CUSTOMERS` / `WRITE_MARKETING` / `WRITE_CRM`) before running.
 
+A failed check answers a plain `401` with **no `WWW-Authenticate: Bearer` challenge header**
+(`src/app.ts`, `staticBearerAuth`) — deliberately not the MCP SDK's `requireBearerAuth` helper, which
+adds that header because it's built for a real OAuth resource server. This server has no
+authorization server, token endpoint, or `/.well-known/oauth-*` metadata behind it, and some MCP
+clients treat that header as "this server speaks OAuth" and attempt discovery/Dynamic Client
+Registration instead of using a configured static header — which fails here since there's nothing
+to discover. Omitting the header avoids that path entirely.
+
 ## Security considerations
 
 - **No secrets in code or logs.** API keys are read from environment variables only; structured
@@ -263,6 +271,36 @@ or `docker compose up` using the provided `docker-compose.yml`.
 > session's sandboxed environment — outbound access to Docker Hub's image CDN was blocked by the
 > session's network policy — so build it once in your own environment before relying on it in
 > production.
+
+**Vercel:** deploys as a single serverless function (`api/index.js`) rather than the Dockerfile —
+Vercel doesn't run arbitrary containers for this deployment model. This is a good fit here
+specifically because the MCP handler (`src/mcp/server.ts`) builds a fresh `McpServer` per request
+and keeps no state between requests, so there's no session affinity for serverless's
+independent-invocation model to break.
+
+1. Vercel dashboard → **Add New → Project**, import this repo. Framework preset: **Other** (no
+   framework — `vercel.json` already sets the build command).
+2. Project → **Settings → Environment Variables**, add the same variables as any other deployment:
+   `MCP_AUTH_SECRET`, `ENABLE_GHL`/`ENABLE_BREVO`/`ENABLE_STRIPE`, and the enabled integrations'
+   keys (`GHL_API_KEY`, `GHL_LOCATION_ID`, `BREVO_API_KEY`, `STRIPE_SECRET_KEY`). `LOG_LEVEL` is
+   optional. Do **not** set `NODE_ENV` — Vercel sets it to `production` for you at runtime, and
+   (unlike Render) its install step isn't affected by it either way.
+3. Deploy. The MCP endpoint is at `https://<your-project>.vercel.app/mcp`.
+
+`vercel.json` rewrites every path to that one function, so `GET /health` and `ALL /mcp` are reachable
+at the project root exactly as documented above, and `vercel.json` also sets `maxDuration: 60` for
+it (Vercel's per-invocation execution cap — the default without this is much shorter and can cut off
+a slow bulk operation, e.g. `find_customers_by_conditions` scanning close to `maxScan` records across
+a slow upstream API). If you still hit timeouts on heavy cross-system scans, raise `maxDuration`
+further — the ceiling depends on your Vercel plan (Fluid Compute raises it well past what the free
+Hobby tier allows).
+
+> `api/index.js` imports `../dist/vercel.js` — the compiled output of `src/vercel.ts`, built by the
+> `buildCommand` in `vercel.json` (`npm run build`) before Vercel packages the function. It's a
+> separate entry point from `src/server.ts` (used by Docker/Render/Railway) because those call
+> `app.listen()` and install `SIGTERM`/`SIGINT` handlers for a graceful shutdown of a long-lived
+> process — neither concept applies to a request-scoped serverless function, so `src/vercel.ts`
+> skips both and just exports the built Express app.
 
 **Render:** a [`render.yaml`](render.yaml) blueprint is included — Render dashboard → **New →
 Blueprint**, point it at this repo, and fill in the secret env vars it prompts for

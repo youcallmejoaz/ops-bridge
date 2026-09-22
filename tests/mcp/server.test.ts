@@ -54,6 +54,20 @@ describe('POST /mcp — authentication', () => {
     expect(res.status).toBe(401);
   });
 
+  it('never sends a WWW-Authenticate challenge on 401 (this server is not an OAuth resource server, and that header sends some MCP clients into a discovery/DCR flow that has nothing to find here)', async () => {
+    const noHeader = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .send({ jsonrpc: '2.0', id: 1, method: 'ping' });
+    expect(noHeader.headers['www-authenticate']).toBeUndefined();
+
+    const wrongToken = await request(app)
+      .post('/mcp')
+      .set({ ...MCP_HEADERS, Authorization: 'Bearer wrong-token' })
+      .send({ jsonrpc: '2.0', id: 1, method: 'ping' });
+    expect(wrongToken.headers['www-authenticate']).toBeUndefined();
+  });
+
   it('accepts a request with the correct bearer token', async () => {
     const res = await request(app)
       .post('/mcp')
