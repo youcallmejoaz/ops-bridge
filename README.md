@@ -264,9 +264,27 @@ or `docker compose up` using the provided `docker-compose.yml`.
 > session's network policy — so build it once in your own environment before relying on it in
 > production.
 
-**Render / Railway / Fly.io / a generic container platform:** point the platform at this repo (or
-the built image), set the environment variables above, expose the port the platform assigns via
-`PORT`, and use `npm run build && npm start` (or the Dockerfile) as the start command.
+**Render:** a [`render.yaml`](render.yaml) blueprint is included — Render dashboard → **New →
+Blueprint**, point it at this repo, and fill in the secret env vars it prompts for
+(`MCP_AUTH_SECRET`, the enabled integrations' keys). For a service created by hand instead (**New →
+Web Service**), set:
+
+- **Build Command:** `npm ci --include=dev && npm run build`
+- **Start Command:** `npm start`
+- **Health Check Path:** `/health`
+
+> **Do not set `NODE_ENV=production`** in Render's environment variables. Render applies
+> dashboard env vars during the _build_ step too, and npm's default behavior is to skip
+> `devDependencies` — including `typescript` and `@types/express` — whenever `NODE_ENV=production`
+> is set, which breaks the TypeScript build with confusing "could not find a declaration file"
+> errors. The explicit `--include=dev` above is a permanent guard against this regardless; the app
+> itself doesn't need `NODE_ENV` set to run correctly (it only affects log pretty-printing, and
+> `pino-pretty` ships as a regular dependency either way).
+
+**Railway / Fly.io / a generic container platform:** point the platform at this repo (or the built
+image), set the environment variables above, expose the port the platform assigns via `PORT`, and
+use `npm run build && npm start` (or the Dockerfile) as the start command. The same `NODE_ENV`
+caveat applies on any platform that reuses build-time env vars for `npm ci`.
 
 ## Adding a new integration
 

@@ -1,0 +1,49 @@
+# Render Blueprint for OpsBridge MCP.
+#
+# This documents and codifies the correct deploy configuration — in
+# particular the build command below, which exists specifically to avoid a
+# real footgun: Render applies dashboard-set environment variables during
+# the BUILD step too, and npm has a long-standing behavior where
+# NODE_ENV=production makes `npm ci` silently skip devDependencies. This
+# project's build needs typescript/@types/express/@types/node (all
+# devDependencies, correctly so — they're compile-time only), so
+# `--include=dev` forces them to install regardless of what NODE_ENV ends
+# up being set to, for any reason, now or later.
+#
+# Using this file: Render dashboard → New → Blueprint → point at this repo.
+# For a service already created by hand (New → Web Service), this file does
+# NOT retroactively change it — update that service's Build Command in its
+# own Settings page to match the buildCommand below.
+services:
+  - type: web
+    name: opsbridge-mcp
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      # Secrets and per-deploy choices — set these in the Render dashboard
+      # (or via `render env` / the API); intentionally not synced from this
+      # file so no secret value is ever committed to the repo.
+      - key: MCP_AUTH_SECRET
+        sync: false
+      - key: ENABLE_GHL
+        sync: false
+      - key: ENABLE_BREVO
+        sync: false
+      - key: ENABLE_STRIPE
+        sync: false
+      - key: GHL_API_KEY
+        sync: false
+      - key: GHL_LOCATION_ID
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      # Safe non-secret default. Deliberately NOT setting NODE_ENV here —
+      # see the note above.
+      - key: LOG_LEVEL
+        value: info
